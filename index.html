@@ -200,15 +200,16 @@ function cargar(){
 function render(){ if(!D.cuentas.length){$('app').innerHTML='<div class="cargando">Falta instalar: corré <b>instalar()</b> desde el editor de Apps Script.</div>';return;} vista==='inicio'?renderInicio():renderDetalle(); }
 
 function chipPago(c){
-  if(c.pagada) return '<span class="chip c-verde">'+sv('check',14,2.4)+'Pagada</span>';
+  if(c.pagada) return '<span class="chip c-verde">'+sv('check',14,2.4)+'Corte pagado · próximo '+fcorta(c.proximoPago)+'</span>';
   const d=c.diasPago, k=d<=3?'c-rojo':d<=5?'c-naranja':d<=10?'c-amarillo':'c-blanco';
-  return '<span class="chip '+k+'">'+(d===0?'Pagar hoy':'Pagar en '+diasTxt(d))+' · '+fcorta(c.proximoPago)+'</span>';
+  const cuanto=c.corteEmitido?'Pagar '+fmt(c.porPagar)+' ':'Pagar ';
+  return '<span class="chip '+k+'">'+cuanto+(d===0?'hoy':'en '+diasTxt(d))+' · '+fcorta(c.proximoPago)+'</span>';
 }
 function montoCta(c){ if(c.tipo==='credito') return (c.deuda>0?'−':'')+fmt(c.deuda); return (c.saldo<0?'−':'')+fmt(c.saldo); }
 
 function tarjeta(c,top,frente,z){
   const cred=c.tipo==='credito';
-  const det=cred?(c.pagada?'Visa •••• '+c.ultimos4:'Paga '+fcorta(c.proximoPago)+' · '+diasTxt(c.diasPago)):'Débito •••• '+c.ultimos4;
+  const det=cred?(c.pagada?'Corte pagado ✓':(c.corteEmitido?'Pagar '+fmt(c.porPagar)+' · ':'Paga ')+fcorta(c.proximoPago)+' · '+diasTxt(c.diasPago)):'Débito •••• '+c.ultimos4;
   let extra='';
   if(frente&&cred){
     const pct=Math.min(100,Math.max(0,c.deuda/c.limite*100));
@@ -259,8 +260,11 @@ function renderDetalle(){
       '<div class="col" style="position:relative"><span style="font-size:12px">'+(c.deuda>0?'Debo':'Saldo a favor')+'</span><span class="num">'+fmt(c.deuda)+'</span>'+
       (c.ajuste?'<span class="chip c-blanco" style="margin-top:10px">incluye '+fmt(c.ajuste)+' '+esc(c.ajusteNota||'de ajuste')+'</span>':'')+'</div>'+
       '<div class="col" style="gap:10px;position:relative"><span class="barra"><i style="width:'+Math.min(100,Math.max(0,c.deuda/c.limite*100))+'%"></i></span>'+chipPago(c)+'</div></div>';
-    stats='<div class="stat"><span>Para dejarla en cero</span><b>'+fmt(c.paraCero)+'</b></div><div class="stat"><span>Disponible</span><b>'+fmt(c.disponible)+'</b></div>'+
-      '<div class="stat"><span>Gastado desde el corte ('+fcorta(c.ultimoCorte)+')</span><b>'+fmt(c.gastadoCorte)+'</b></div><div class="stat"><span>Pago · '+fcorta(c.proximoPago)+'</span><b>'+(c.pagada?'Pagada':diasTxt(c.diasPago))+'</b></div>';
+    const corteTxt=c.corteEmitido
+      ?'<div class="stat"><span>Pago del corte '+fcorta(c.corteEstado)+' · vence '+fcorta(c.proximoPago)+'</span><b style="color:'+(c.pagada?'var(--green)':'var(--ink)')+'">'+(c.pagada?'Pagado ✓':fmt(c.porPagar))+'</b>'+(c.saldoCorte!=null&&!c.pagada&&c.porPagar<c.saldoCorte?'<span>de '+fmt(c.saldoCorte)+'</span>':'')+'</div>'
+      :'<div class="stat"><span>Próximo corte</span><b>'+fcorta(c.corteEstado)+'</b><span>pago el '+fcorta(c.proximoPago)+'</span></div>';
+    stats=corteTxt+'<div class="stat"><span>Para dejarla en cero</span><b>'+fmt(c.paraCero)+'</b></div>'+
+      '<div class="stat"><span>Gastado desde el corte ('+fcorta(c.ultimoCorte)+')</span><b>'+fmt(c.gastadoCorte)+'</b></div><div class="stat"><span>Disponible</span><b>'+fmt(c.disponible)+'</b></div>';
     botones='<button class="btn" onclick="abrirMov(null,{tipo:\'PAGO\',destinoId:\''+c.id+'\'})">'+sv('pagos',18,2)+'Pagar</button><button class="btn claro" onclick="abrirAjustes()">'+sv('ajustes',18,2)+'Ajustes</button>';
   } else {
     card='<div class="grande" style="background:'+c.color+'"><span class="deco"></span><div class="fila"><span class="nom">'+esc(c.nombre)+'</span>'+(c.id==='dav'?'<span class="chip c-blanco">Principal</span>':'')+'</div>'+
@@ -373,7 +377,8 @@ function guardarCat(){
 function abrirAjustes(){
   const c=cta(sel), cred=c.tipo==='credito'; quitarAj=false;
   abrir(cab(cred?'Ajustes · '+esc(c.nombre):'Ajustar saldo')+
-   (cred?'<label class="campo">Límite<input id="aLim" inputmode="decimal" value="'+c.limite+'"></label><div class="dosc"><label class="campo">Día de corte<input id="aCorte" inputmode="numeric" value="'+c.corteDia+'"></label><label class="campo">Día de pago<input id="aPago" inputmode="numeric" value="'+c.pagoDia+'"></label></div>':'')+
+   (cred?'<label class="campo">Pago del corte según el banco<input id="aCorteMonto" inputmode="decimal" placeholder="Ej. 74.45" value="'+(c.corteManual?c.saldoCorte.toFixed(2):'')+'"></label><div class="nota">Es lo que dice tu estado de cuenta del corte del '+fcorta(c.corteEstado)+' (el "pago de contado"), aunque ya lo hayás pagado. La app le resta los pagos que hagás.</div>'+
+     '<label class="campo">Límite<input id="aLim" inputmode="decimal" value="'+c.limite+'"></label><div class="dosc"><label class="campo">Día de corte<input id="aCorte" inputmode="numeric" value="'+c.corteDia+'"></label><label class="campo">Día de pago<input id="aPago" inputmode="numeric" value="'+c.pagoDia+'"></label></div>':'')+
    (c.ajuste?'<div class="ajrow" id="aRow"><span>Incluye '+fmt(c.ajuste)+' '+esc(c.ajusteNota)+'</span><button class="btn claro" style="height:40px" onclick="quitarAj=true;this.parentNode.innerHTML=\'<span>Se quitará al guardar ✓</span>\'">Quitar</button></div>':'')+
    '<label class="campo">'+(cred?'Lo que debo según el banco':'Saldo real según el banco')+' (opcional)<input id="aReal" inputmode="decimal" placeholder="Dejalo vacío si está bien"></label>'+
    '<div class="nota">Si el número de la app no cuadra con el banco, escribí el real y se crea un ajuste por la diferencia.</div>'+
@@ -382,7 +387,7 @@ function abrirAjustes(){
 function guardarAjustes(){
   const c=cta(sel), cred=c.tipo==='credito';
   const o={id:c.id,quitarAjuste:quitarAj,saldoReal:$('aReal').value.replace(/[$,\s]/g,'')};
-  if(cred){o.limite=$('aLim').value.replace(/[$,\s]/g,'');o.corteDia=$('aCorte').value;o.pagoDia=$('aPago').value;}
+  if(cred){o.limite=$('aLim').value.replace(/[$,\s]/g,'');o.corteDia=$('aCorte').value;o.pagoDia=$('aPago').value;o.saldoCorte=$('aCorteMonto').value.replace(/[$,\s]/g,'');}
   $('bAj').disabled=true;
   llamar('actualizarCuenta',o).then(d=>{D=d;cerrar();render();toast('Listo');}).catch(fallo);
 }
