@@ -1,6 +1,6 @@
 // Mi cartera — service worker: guarda la pantalla para que abra rápido y sin señal.
 // Los datos NO se guardan aquí: siempre se piden al Apps Script.
-const CACHE = 'mi-cartera-v2';
+const CACHE = 'mi-cartera-v3';
 const ARCHIVOS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

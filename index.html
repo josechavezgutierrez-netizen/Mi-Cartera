@@ -102,6 +102,14 @@ button{cursor:pointer}
 .iconos input:focus-visible+span{outline:2px solid var(--blue)}
 .nota{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.4}
 .ajrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--line);font-size:14px}
+.fila-btn{display:flex;align-items:center;gap:12px;width:calc(100% - 40px);margin:12px 20px 0;padding:14px 16px;border:none;border-radius:18px;background:#fff;text-align:left}
+.fila-btn .t{flex-grow:1;display:flex;flex-direction:column;gap:2px}.fila-btn .t b{font-size:15px}.fila-btn .t span{font-size:12px;color:var(--muted)}
+.punto{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#FFD24A;color:#111318;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.barra.gris{background:var(--line)}.barra.gris i{background:var(--green)}
+.est{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.est.pagado{background:var(--greenbg);color:var(--green)}.est.pendiente{background:var(--line);color:var(--ink)}.est.atrasado{background:var(--redbg);color:var(--red)}.est.pronto{background:#FFF1C7;color:#6B4E00}
+.sug{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.sug:last-child{border-bottom:none}
+.sug .acc2{display:flex;gap:6px}.sug .btn{height:40px;padding:0 12px;font-size:13px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
 .toast.on{opacity:1}
 .cargando{padding:120px 20px;text-align:center;color:var(--muted)}
@@ -137,6 +145,8 @@ const IC={
  deporte:'<path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M3 9v6"/><path d="M21 9v6"/><rect x="5" y="5" width="3" height="14" rx="1"/><rect x="16" y="5" width="3" height="14" rx="1"/><path d="M8 12h8"/>',
  plus:'<path d="M12 5v14M5 12h14"/>', check:'<path d="M20 6 9 17l-5-5"/>', alerta:'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>',
  recarga:'<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>', atras:'<path d="m15 18-6-6 6-6"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>',
+ calendario:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+ chevron:'<path d="m9 18 6-6-6-6"/>',
  ajustes:'<path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>'
 };
 const COL={super:['#E3F1E4','#1E6B34'],comida:['#FDEBDD','#A4470F'],gasolina:['#FFF2CC','#7A5A00'],farmacia:['#E4F0FB','#1B5E9E'],tiendas:['#F3E5F5','#6A1B9A'],suscripciones:['#E8E6FB','#4232B8'],transferencias:['#E2E6FA','#1F3FD1'],pagos:['#E2E6FA','#1F3FD1'],sueldo:['#D9F2E3','#137A43'],otros:['#EEF0F3','#3B404B'],etiqueta:['#EEF0F3','#3B404B'],casa:['#FBE9E7','#9C3B1E'],carro:['#E0F2F1','#00695C'],regalo:['#FCE4EC','#AD1457'],salud:['#FFEBEE','#B71C1C'],educacion:['#E8EAF6','#283593'],deporte:['#F1F8E9','#33691E']};
@@ -197,7 +207,7 @@ function cargar(){
     else $('app').innerHTML='<div class="cargando">No pude cargar: '+esc(e.message)+'</div>';
   });
 }
-function render(){ if(!D.cuentas.length){$('app').innerHTML='<div class="cargando">Falta instalar: corré <b>instalar()</b> desde el editor de Apps Script.</div>';return;} vista==='inicio'?renderInicio():renderDetalle(); }
+function render(){ if(!D.cuentas.length){$('app').innerHTML='<div class="cargando">Falta instalar: corré <b>instalar()</b> desde el editor de Apps Script.</div>';return;} vista==='inicio'?renderInicio():vista==='fijos'?renderFijos():renderDetalle(); }
 
 function chipPago(c){
   if(c.pagada) return '<span class="chip c-verde">'+sv('check',14,2.4)+'Corte pagado · próximo '+fcorta(c.proximoPago)+'</span>';
@@ -239,13 +249,84 @@ function renderInicio(){
   $('app').innerHTML=
    '<header class="top"><span class="titulo">Mi cartera</span><span class="acc"><button class="btn ico claro" id="bRev" aria-label="Revisar correos ahora" onclick="revisar()">'+sv('recarga',18,2)+'</button><button class="btn" onclick="abrirMov()">'+sv('plus',16,2.2)+'Movimiento</button></span></header>'+
    '<section class="panel"><div class="total'+(neg?' neg':'')+'"><div><div class="lbl">'+(neg?'Te faltan':'Si pago todo, me quedan')+'</div><div class="num">'+fmt(D.total)+'</div></div><span class="badge" style="background:'+(neg?'var(--redbg)':'var(--greenbg)')+';color:'+(neg?'var(--red)':'var(--green)')+'">'+sv(neg?'alerta':'check',20,2)+'</span></div><div class="sub">'+hace(D.ultimaRevision)+'</div></section>'+
-   avisos+
+   avisos+filaFijos()+
    '<div class="pila" style="height:'+((cs.length-1)*OFF+200)+'px">'+pila+'</div>'+
    '<div class="h3">Últimos movimientos</div>'+
    '<section class="lista">'+(ult.length?ult.map(m=>movHtml(m,true)).join(''):'<div class="vacio">Todavía no hay movimientos.<br>Los correos nuevos del banco aparecen aquí.</div>')+'</section>'+
    '<div class="pie"><button onclick="desconectar()">Desconectar este celular</button></div>';
 }
 
+function filaFijos(){
+  const F=D.fijos; if(!F) return '';
+  const nuevos=F.sugeridos.length;
+  const sub=F.cuantos?fmt(F.totalMes)+' al mes · '+F.cuantosPagados+' de '+F.cuantos+' pagados'+(F.pendienteMes>0?' · faltan '+fmt(F.pendienteMes):''):(nuevos?'Encontré pagos que se repiten':'Agregá tus suscripciones y pagos del mes');
+  return '<button class="fila-btn" onclick="verFijos()"><span class="ic" style="background:#E8E6FB;color:#4232B8">'+sv('calendario',18)+'</span><span class="t"><b>Pagos fijos</b><span>'+sub+'</span></span>'+(nuevos?'<span class="punto">'+nuevos+'</span>':'')+sv('chevron',18,2)+'</button>';
+}
+function verFijos(){vista='fijos';render();window.scrollTo(0,0);}
+function estFijo(f){
+  if(f.situacion==='pagado') return '<span class="est pagado">'+(f.como==='manual'?'Pagado ✓':'Pagado ✓')+'</span>';
+  if(f.situacion==='atrasado') return '<span class="est atrasado">Atrasado</span>';
+  return '<span class="est '+(f.diasVence<=3?'pronto':'pendiente')+'">'+(f.diasVence===0?'Hoy':'En '+diasTxt(f.diasVence))+'</span>';
+}
+function subFijo(f){
+  const cu=f.cuentaId?cta(f.cuentaId).nombre:'';
+  if(f.situacion==='pagado') return 'Pagado'+(f.pagadoEl?' el '+fcorta(f.pagadoEl):'')+(f.como==='manual'?' (a mano)':'')+(cu?' · '+cu:'');
+  const cuando=f.frecuencia==='anual'?'cada año, '+fcorta(f.vence):'cada día '+f.dia;
+  return (f.situacion==='atrasado'?'Tocaba el '+fcorta(f.vence):'Vence '+cuando)+(cu?' · '+cu:'');
+}
+function renderFijos(){
+  const F=D.fijos, pct=F.totalMes?Math.min(100,F.pagadoMes/F.totalMes*100):0;
+  const orden=[...F.lista].sort((a,b)=>(a.pagado-b.pagado)||(a.diasVence-b.diasVence));
+  const icF=f=>{const col=COL[f.icono]||COL.suscripciones;return '<span class="ic" style="background:'+col[0]+';color:'+col[1]+'">'+sv(f.icono)+'</span>';};
+  let html='<header class="volver"><button aria-label="Volver" onclick="inicio()">'+sv('atras',22,2)+'</button><span style="font-size:17px;font-weight:700;flex-grow:1">Pagos fijos</span><button aria-label="Agregar pago fijo" onclick="abrirFijo()">'+sv('plus',22,2)+'</button></header>'+
+   '<section class="panel"><div class="lbl" style="font-size:13px;color:var(--muted)">Total al mes</div><div class="mono" style="font-family:var(--mono);font-size:40px;font-weight:700;letter-spacing:-1.5px;line-height:1.1">'+fmt(F.totalMes)+'</div>'+
+   (F.totalAnual?'<div class="sub">+ '+fmt(F.totalAnual)+' al año en pagos anuales</div>':'')+
+   '<span class="barra gris" style="margin-top:14px"><i style="width:'+pct+'%"></i></span>'+
+   '<div class="fila" style="margin-top:8px;font-size:13px"><span style="color:var(--green);font-weight:600">Pagado '+fmt(F.pagadoMes)+'</span><span style="color:var(--muted)">Falta '+fmt(F.pendienteMes)+'</span></div></section>';
+  if(F.sugeridos.length){
+    html+='<div class="h3">Detectados · ¿son pagos fijos?</div><section class="lista">'+F.sugeridos.map(f=>
+      '<div class="sug">'+icF(f)+'<span class="t" style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><b style="font-size:14px">'+esc(f.nombre)+'</b><span style="font-size:12px;color:var(--muted)">'+fmt(f.monto)+' · día '+f.dia+'</span></span><span class="acc2"><button class="btn claro" style="background:var(--line)" onclick="descartarFijo(\''+f.id+'\')">No</button><button class="btn" onclick="aceptarFijo(\''+f.id+'\')">Agregar</button></span></div>').join('')+'</section>';
+  }
+  html+='<div class="h3">Este '+(new Date().toLocaleDateString('es-SV',{month:'long'}))+'</div><section class="lista">'+
+   (orden.length?orden.map(f=>'<button class="mov" onclick="abrirFijo(\''+f.id+'\')">'+icF(f)+'<span class="t"><b>'+esc(f.nombre)+'</b><span>'+esc(subFijo(f))+'</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="m">'+fmt(f.montoPagado!=null?f.montoPagado:f.monto)+'</span>'+estFijo(f)+'</span></button>').join('')
+   :'<div class="vacio">Todavía no hay pagos fijos.<br>Agregá los detectados o tocá + arriba.</div>')+'</section>'+
+   '<div class="nota" style="padding:12px 24px 0">Se marcan como pagados solos cuando llega el correo del banco con ese cobro. También podés marcarlos a mano tocándolos.</div>';
+  $('app').innerHTML=html;
+}
+function aceptarFijo(id){llamar('guardarFijo',{id:id,estado:'activo'}).then(d=>{D=d;render();toast('Agregado a tus pagos fijos');}).catch(fallo);}
+function descartarFijo(id){llamar('borrarFijo',id).then(d=>{D=d;render();toast('Listo, no se vuelve a sugerir');}).catch(fallo);}
+let editFijo=null, frecF='mensual';
+function abrirFijo(id){
+  confirmaBorrar=false;
+  editFijo=id?D.fijos.lista.concat(D.fijos.sugeridos).find(f=>f.id===id):null;
+  const f=editFijo||{nombre:'',monto:'',dia:new Date().getDate(),cuentaId:'bacc',frecuencia:'mensual',mes:'',palabras:'',icono:'suscripciones'};
+  frecF=f.frecuencia;
+  const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  abrir(cab(editFijo?esc(f.nombre):'Nuevo pago fijo')+
+   (editFijo&&editFijo.estado==='activo'?'<div class="ajrow" style="margin-top:0"><span>'+(f.pagado?'Pagado este '+(f.frecuencia==='anual'?'año':'mes')+' ✓':'Pendiente este '+(f.frecuencia==='anual'?'año':'mes'))+'</span><button class="btn '+(f.pagado?'claro':'')+'" style="height:40px" id="bMarca" onclick="marcarFijoUI('+(!f.pagado)+')">'+(f.pagado?'Desmarcar':'Marcar pagado')+'</button></div>':'')+
+   '<label class="campo">Nombre<input id="fjNom" placeholder="Ej. Disney+" value="'+esc(f.nombre)+'"></label>'+
+   '<div class="dosc"><label class="campo">Monto (USD)<input id="fjMon" inputmode="decimal" value="'+(f.monto!==''?Number(f.monto).toFixed(2):'')+'"></label><label class="campo">Día de cobro<input id="fjDia" inputmode="numeric" value="'+f.dia+'"></label></div>'+
+   '<div class="campo">Cada cuánto<div class="seg" style="grid-template-columns:1fr 1fr"><button id="fq_mensual" class="'+(frecF==='mensual'?'on':'')+'" onclick="setFrec(\'mensual\')">Cada mes</button><button id="fq_anual" class="'+(frecF==='anual'?'on':'')+'" onclick="setFrec(\'anual\')">Cada año</button></div></div>'+
+   '<label class="campo" id="rMes" style="display:'+(frecF==='anual'?'':'none')+'">Mes del cobro<select id="fjMes">'+MESES.map((m,i)=>'<option value="'+(i+1)+'"'+(Number(f.mes)===i+1?' selected':'')+'>'+m+'</option>').join('')+'</select></label>'+
+   '<label class="campo">Se cobra en<select id="fjCta"><option value="">Cualquier cuenta</option>'+opts(D.cuentas,f.cuentaId)+'</select></label>'+
+   '<label class="campo">Cómo aparece en el banco<input id="fjPal" placeholder="Ej. DISNEY PLUS" value="'+esc(f.palabras)+'"></label>'+
+   '<div class="nota">Con este nombre la app reconoce el cobro en los correos y lo marca pagado sola. Podés poner varios separados por coma.</div>'+
+   '<div class="botones">'+(editFijo?'<button class="btn peligro" id="bBorrarF" onclick="quitarFijo()">Quitar</button>':'')+'<button class="btn" id="bGuardarF" onclick="guardarFijoUI()">'+(editFijo&&editFijo.estado==='sugerido'?'Agregar':'Guardar')+'</button></div>');
+}
+function setFrec(q){frecF=q;['mensual','anual'].forEach(k=>$('fq_'+k).classList.toggle('on',k===q));$('rMes').style.display=q==='anual'?'':'none';}
+function guardarFijoUI(){
+  const o={id:editFijo?editFijo.id:null,nombre:$('fjNom').value.trim(),monto:$('fjMon').value.replace(/[$,\s]/g,''),dia:$('fjDia').value,frecuencia:frecF,mes:frecF==='anual'?$('fjMes').value:'',cuentaId:$('fjCta').value,palabras:$('fjPal').value,estado:'activo'};
+  if(!o.nombre){toast('Poné un nombre');return;}
+  if(!(parseFloat(o.monto)>0)){toast('Escribí el monto');return;}
+  $('bGuardarF').disabled=true;
+  llamar('guardarFijo',o).then(d=>{D=d;cerrar();render();toast('Guardado');}).catch(fallo);
+}
+function marcarFijoUI(pagado){$('bMarca').disabled=true;llamar('marcarFijo',editFijo.id,pagado).then(d=>{D=d;cerrar();render();toast(pagado?'Marcado como pagado':'Marcado como pendiente');}).catch(fallo);}
+function quitarFijo(){
+  const b=$('bBorrarF');
+  if(!confirmaBorrar){confirmaBorrar=true;b.textContent='¿Seguro? Tocá otra vez';return;}
+  b.disabled=true;llamar('borrarFijo',editFijo.id).then(d=>{D=d;cerrar();render();toast('Quitado');}).catch(fallo);
+}
 function verCuenta(id){sel=id;vista='detalle';filtro='todos';render();window.scrollTo(0,0);}
 function inicio(){vista='inicio';render();window.scrollTo(0,0);}
 
