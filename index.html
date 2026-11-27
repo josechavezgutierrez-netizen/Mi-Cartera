@@ -209,8 +209,9 @@ function cargar(){
 }
 function render(){ if(!D.cuentas.length){$('app').innerHTML='<div class="cargando">Falta instalar: corré <b>instalar()</b> desde el editor de Apps Script.</div>';return;} vista==='inicio'?renderInicio():vista==='fijos'?renderFijos():renderDetalle(); }
 
+function sigPago(c){return (c.proximos||[]).find(p=>p.enCurso);}
 function chipPago(c){
-  if(c.pagada) return '<span class="chip c-verde">'+sv('check',14,2.4)+'Corte pagado · próximo '+fcorta(c.proximoPago)+'</span>';
+  if(c.pagada){const n=sigPago(c);return '<span class="chip c-verde">'+sv('check',14,2.4)+'Corte pagado'+(n?' · siguiente '+fmt(n.monto)+' el '+fcorta(n.vence):'')+'</span>';}
   const d=c.diasPago, k=d<=3?'c-rojo':d<=5?'c-naranja':d<=10?'c-amarillo':'c-blanco';
   const cuanto=c.corteEmitido?'Pagar '+fmt(c.porPagar)+' ':'Pagar ';
   return '<span class="chip '+k+'">'+cuanto+(d===0?'hoy':'en '+diasTxt(d))+' · '+fcorta(c.proximoPago)+'</span>';
@@ -219,7 +220,7 @@ function montoCta(c){ if(c.tipo==='credito') return (c.deuda>0?'−':'')+fmt(c.d
 
 function tarjeta(c,top,frente,z){
   const cred=c.tipo==='credito';
-  const det=cred?(c.pagada?'Corte pagado ✓':(c.corteEmitido?'Pagar '+fmt(c.porPagar)+' · ':'Paga ')+fcorta(c.proximoPago)+' · '+diasTxt(c.diasPago)):'Débito •••• '+c.ultimos4;
+  const det=cred?(c.pagada?(sigPago(c)?'Próximo: '+fmt(sigPago(c).monto)+' · '+fcorta(sigPago(c).vence):'Corte pagado ✓'):(c.corteEmitido?'Pagar '+fmt(c.porPagar)+' · ':'Paga ')+fcorta(c.proximoPago)+' · '+diasTxt(c.diasPago)):'Débito •••• '+c.ultimos4;
   let extra='';
   if(frente&&cred){
     const pct=Math.min(100,Math.max(0,c.deuda/c.limite*100));
@@ -355,9 +356,23 @@ function renderDetalle(){
     botones='<button class="btn" onclick="abrirMov(null,{tipo:\'GASTO\',cuentaId:\''+c.id+'\'})">'+sv('plus',18,2)+'Movimiento</button><button class="btn claro" onclick="abrirAjustes()">'+sv('ajustes',18,2)+'Ajustar saldo</button>';
   }
   const F=[['todos','Todos'],['entradas','Entradas'],['salidas','Salidas'],['pagos','Pagos']];
+  let prox='';
+  if(cred&&c.proximos&&c.proximos.length){
+    prox='<div class="h3">Próximos pagos</div><section class="lista">'+c.proximos.map(p=>{
+      const est=p.enCurso
+        ?'<span class="est pendiente">'+(p.diasCorte>0?'Corta en '+diasTxt(p.diasCorte):'Corta hoy')+'</span>'
+        :(p.pagado?'<span class="est pagado">Pagado ✓</span>':'<span class="est '+(c.diasPago<=3?'atrasado':'pronto')+'">Falta '+fmt(p.falta)+'</span>');
+      const sub=p.enCurso
+        ?'Compras del '+fcorta((d=>new Date(d.getFullYear(),d.getMonth()-1,d.getDate()+1))(new Date(p.corte)))+' al '+fcorta(p.corte)+' · va sumando'+(p.flotantes?' · sin los '+fmt(p.flotantes)+' '+esc(c.ajusteNota||'de ajuste'):'')
+        :'Estado de cuenta del corte del '+fcorta(p.corte);
+      return '<div class="mov" style="cursor:default"><span class="ic" style="background:'+(p.enCurso?'#E2E6FA':p.pagado?'var(--greenbg)':'#FFF1C7')+';color:'+(p.enCurso?'var(--blue)':p.pagado?'var(--green)':'#6B4E00')+'">'+sv(p.enCurso?'calendario':p.pagado?'check':'pagos')+'</span>'+
+        '<span class="t"><b>Pagar el '+fcorta(p.vence)+(p.enCurso?' (va en)':'')+'</b><span>'+sub+'</span></span>'+
+        '<span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="m">'+fmt(p.monto)+'</span>'+est+'</span></div>';
+    }).join('')+'</section><div class="nota" style="padding:10px 24px 0">Lo que comprés hasta el '+fcorta(sigPago(c).corte)+' se paga el '+fcorta(sigPago(c).vence)+'. Lo que comprés después, ya entra al siguiente mes.</div>';
+  }
   $('app').innerHTML=
    '<header class="volver"><button aria-label="Volver" onclick="inicio()">'+sv('atras',22,2)+'</button><span style="font-size:17px;font-weight:700">'+esc(c.nombre)+'</span></header>'+
-   card+'<div class="grid">'+stats+'</div><div class="dos">'+botones+'</div>'+
+   card+'<div class="grid">'+stats+'</div><div class="dos">'+botones+'</div>'+prox+
    '<div class="filtros">'+F.map(f=>'<button class="'+(filtro===f[0]?'on':'')+'" onclick="filtro=\''+f[0]+'\';renderDetalle()">'+f[1]+'</button>').join('')+'</div>'+
    '<section class="lista">'+(lista||'<div class="vacio">Sin movimientos aquí.</div>')+'</section>';
 }
